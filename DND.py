@@ -1,5 +1,8 @@
 import pygame
 import sys
+
+################################ NEW! #################################
+
 import pandas as pd
 import random
 
@@ -11,9 +14,11 @@ pd.set_option('display.max_columns', None)
 df = pd.read_excel('Monster Spreadsheet (D&D5e).xlsx')
 
 def random_monster():
-    selection = random.choice(list(df["Name"]))
+    selection = random.choice(df["Name"])
     return df.loc[df['Name'] == selection]
-print(random_monster())
+#print(random_monster())
+
+########################################################################
 
 class DndMainGame:
     # Colors
@@ -247,6 +252,7 @@ class MenuBox():
             self.screen.blit(item2_text, (self.x-spawn_pos_x + 10, self.y-spawn_pos_y + 60))
 
 if __name__ == "__main__":
+    print(random_monster())
     # Width, Height, Frame rate, Camera Speed
     game = DndMainGame(400, 400, 60, 5) 
     game.main()
