@@ -1,6 +1,25 @@
 import pygame
 import sys
 
+################################ NEW! #################################
+
+import pandas as pd
+import random
+
+##monsters
+
+##use pandas to read in the excel file and choose a random monster
+
+pd.set_option('display.max_columns', None)
+df = pd.read_excel('Monster Spreadsheet (D&D5e).xlsx')
+
+def random_monster():
+    selection = random.choice(list(df["Name"]))
+    return df.loc[df['Name'] == selection]
+print(random_monster())
+
+########################################################################
+
 class DndMainGame:
     # Colors
     BLACK = (0, 0, 0)
