@@ -1,8 +1,5 @@
 import pygame
 import sys
-
-################################ NEW! #################################
-
 import pandas as pd
 import random
 
@@ -17,8 +14,6 @@ def random_monster():
     selection = random.choice(list(df["Name"]))
     return df.loc[df['Name'] == selection]
 print(random_monster())
-
-########################################################################
 
 class DndMainGame:
     # Colors
