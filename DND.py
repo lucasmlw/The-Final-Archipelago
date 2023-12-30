@@ -1,31 +1,74 @@
 import pygame
 import sys
-
-################################ NEW! #################################
-
+import wx
 import pandas as pd
 import random
+
+##initialise pygame
+pygame.init()
+class system():
+    start = 0
+
+##get screen size info
+outp = wx.App(False)
+width, height = wx.GetDisplaySize()
 
 ##monsters
 
 ##use pandas to read in the excel file and choose a random monster
-
 pd.set_option('display.max_columns', None)
 df = pd.read_excel('Monster Spreadsheet (D&D5e).xlsx')
 
 def random_monster():
-    selection = random.choice(df["Name"])
+    selection = random.choice(list(df["Name"]))
     return df.loc[df['Name'] == selection]
-#print(random_monster())
 
-########################################################################
+##NEW CLASSES!
+class colour():
+    black = (0,0,0)
+    white = (255,255,255)
+    red = (200,50,50)
+    green = (50,200,50)
+    blue = (50,50,200)
 
-class DndMainGame:
-    # Colors
-    BLACK = (0, 0, 0)
-    WHITE = (255, 255, 255)
+    bg1 = (50,85,150) ##dark blue
+    bg2 = (0,30,100) ##darker blue
+
+class font():
+    default = pygame.font.SysFont(None, 30)
+    Arial_20 = pygame.font.SysFont('Arial', 20)
+
+class screen():
+    sidebar_status = "closed"
+    button_rect = pygame.Rect(0,0,0,0)
+    sidebar_rect = pygame.Rect(0,0,0,0)
+    zoom = 1
     
-    background_image = pygame.image.load("map.jpg")
+    def open_sidebar(display, xpos, ypos, bg):
+        display.blit(bg, (-xpos, -ypos))
+        w, h = pygame.display.get_surface().get_size()
+        screen.button_rect = pygame.Rect(w-200,(h/2)-50,20,100)
+        screen.sidebar_rect = pygame.Rect(w-200,0,200,h)
+        pygame.draw.rect(display, colour.bg2, screen.sidebar_rect)
+        pygame.draw.rect(display, colour.bg1, screen.button_rect)
+        display.blit(font.default.render('>', True, colour.white), (w-196, (h/2)-12))
+
+    def close_sidebar(display, xpos, ypos, bg):
+        display.blit(bg, (-xpos, -ypos))
+        screen.sidebar_rect = pygame.Rect(0,0,0,0)
+        w, h = pygame.display.get_surface().get_size()
+        screen.button_rect = pygame.Rect(w-20,(h/2)-50,20,100)
+        pygame.draw.rect(display, colour.bg1, screen.button_rect)
+        display.blit(font.default.render('<', True, colour.white), (w-15, (h/2)-12))
+
+##main game (mainloop)
+class DndMainGame:
+
+    ##colours
+    BLACK = (0,0,0)
+    WHITE = (255,255,255)
+
+    background_image = pygame.image.load("Images/map.jpg")
     background_rect = background_image.get_rect()
     
      # Initialize clock for controlling the frame rate
@@ -41,8 +84,6 @@ class DndMainGame:
     moving_right = False
     moving_up = False
     moving_down = False
-    
-    #font = pygame.font.Font(None, 36)
     
     running = True
     mouse_x = mouse_y = 0
@@ -60,22 +101,48 @@ class DndMainGame:
         self.WIDTH = w
         self.HEIGHT = h
         self.FPS = f
-        
-        self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
+
+        ##create the screen
+        self.screen = pygame.display.set_mode((self.WIDTH/1.5, self.HEIGHT/1.5), pygame.RESIZABLE)
         pygame.display.set_caption("DND")
-        
+
+        ##
         self.camera_x = (self.background_rect.width - self.WIDTH) // 2
-        self.camera_y = (self.background_rect.height - self.HEIGHT) // 2
+        self.camera_y = (self.background_rect.height - self.HEIGHT) // 2 
         
-        print(self.camera_x)
-        print(self.camera_y)
-        
+
+
         self.camera_speed = camera_speed
-        
+
     def handle_events(self):
         for event in pygame.event.get():
+
+            ##detect left click (NEW)
+            if event.type == pygame.MOUSEBUTTONDOWN and \
+                event.button == 1 and \
+                screen.button_rect.collidepoint(event.pos):
+               
+                print("button click")
+                if screen.sidebar_status == "open":
+                    screen.sidebar_status = "closed"
+                elif screen.sidebar_status == "closed":
+                    screen.sidebar_status = "open"
+
+            elif event.type == pygame.MOUSEBUTTONDOWN and \
+               event.button == 1 and \
+               screen.sidebar_rect.collidepoint(event.pos):
+                
+                print("sidebar click")
+                    
+            ##detect mouse click on screen
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                print("screen click!", self.camera_x, self.camera_y, screen.zoom)
+                    
+            ##initialse X button
             if event.type == pygame.QUIT:
                 self.running = False
+
+            ##detect key presses
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     self.moving_left = True
@@ -85,6 +152,8 @@ class DndMainGame:
                     self.moving_up = True
                 elif event.key == pygame.K_DOWN:
                     self.moving_down = True
+
+            ##detect key releases
             elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT:
                     self.moving_left = False
@@ -94,10 +163,18 @@ class DndMainGame:
                     self.moving_up = False
                 elif event.key == pygame.K_DOWN:
                     self.moving_down = False
+
+            ##detect mouse position
             elif event.type == pygame.MOUSEMOTION: # Get Mouse Hover position (0,0) is the top left
                 self.mouse_x, self.mouse_y = event.pos
+
+            ##detect mouse scroll
             elif event.type == pygame.MOUSEWHEEL: # Get Scroll Info
                self.scroll_direction = event.y
+               screen.zoom = screen.zoom + self.scroll_direction/10
+               if screen.zoom < 0.5:
+                   screen.zoom = 0.5
+               
                self.scrolling = True
                self.last_scroll_time = pygame.time.get_ticks()
                
@@ -107,26 +184,34 @@ class DndMainGame:
 
         if time_since_last_scroll > self.scroll_stop_threshold:
             self.scrolling = False
-                
+
     def update(self):
-        # Scale the image based on scroll wheel
-        if self.scrolling:
-            self.scroll_scale = self.scroll_scale + self.scroll_direction/100
+
         # Update camera position based on keyboard input
         if self.moving_left:
             self.camera_x -= self.camera_speed
-            self.change_x -= self.camera_speed
-        if self.moving_right:
+            #self.change_x -= self.camera_speed
+        elif self.moving_right:
             self.camera_x += self.camera_speed
-            self.change_x += self.camera_speed
-        if self.moving_up:
+            #self.change_x += self.camera_speed
+        elif self.moving_up:
             self.camera_y -= self.camera_speed
-        if self.moving_down:
+        elif self.moving_down:
             self.camera_y += self.camera_speed
+            
         
-        # Ensure the camera stays within the bounds of the image
-        self.camera_x = max(0, min(self.camera_x, self.background_rect.width - self.WIDTH))
-        self.camera_y = max(0, min(self.camera_y, self.background_rect.height - self.HEIGHT))
+        
+        # Ensure the camera stays within the bounds of the image EDIT
+        ##get window size
+        
+        w, h = pygame.display.get_surface().get_size()
+        self.mod_background_rect = self.mod_background_image.get_rect()
+        self.camera_x = max(0, min(self.camera_x, self.mod_background_rect.width - w))
+        self.camera_y = max(0, min(self.camera_y, self.mod_background_rect.height - h))
+       
+
+        
+
         
         # Calculate the new center of the screen considering the camera position
         #screen_center = (self.WIDTH // 2, self.HEIGHT // 2)
@@ -137,122 +222,58 @@ class DndMainGame:
 
         # Update the camera position to adjust for the scaling around the center
         #self.camera_x -= difference[0] * (self.scroll_scale - 1)
-        #self.camera_y -= difference[1] * (self.scroll_scale - 1)        
+        #self.camera_y -= difference[1] * (self.scroll_scale - 1)
+
+ 
+
     def draw(self):
-         # Clear the screen
+
+    # Clear the screen
         self.screen.fill(self.WHITE)
+    # Draw the background image at its position and at correct zoom
+        w, h = pygame.display.get_surface().get_size()
+ 
+        self.mod_background_image = self.background_image
+        self.mod_background_image = pygame.transform.scale(self.mod_background_image,\
+                                                           (self.background_rect.width*screen.zoom,\
+                                                           self.background_rect.height*screen.zoom))
+        self.screen.blit(self.mod_background_image, (-self.camera_x, -self.camera_y))
         
-        # Draw the background image at its position
-        self.screen.blit(self.background_image, (-self.camera_x, -self.camera_y))
+        ##suggestion about how to do the zoom more efficiently:
+        ##https://stackoverflow.com/questions/62668614/zooming-in-and-out-with-pygame
 
-        
-        ##### FAILED CODE BELOW ###
-        # Scale the image to the zoom/scroll level and mouse position
-        #if self.scrolling:
-            #scale_factor_x = abs(self.mouse_x-self.WIDTH/2)/self.WIDTH 
-            #scale_factor_y = abs(self.mouse_y-self.HEIGHT/2)/self.HEIGHT
-            
-            #print(abs(self.mouse_x-self.WIDTH/2)/self.WIDTH )
-        #else:
-            #scale_factor_x = scale_factor_y = 1
-        #scaled_image = pygame.transform.scale_by(self.background_image, (self.scroll_scale, 1))
-        #self.background_rect = scaled_image.get_rect()
-        #print(self.background_rect)
-        # This gets new centre
-        # Old centre - new centre = correct scalig
-        # new centre
-        #temp = ((self.background_rect.width - self.WIDTH) // 2) 
-        #print(self.scroll_scale)
-        
-        # Draw the background image at its position
-        # x and y where the top_left of the soruce will be placed
-        # Current image placed -600 -325 out of camera
-        #print(self.change_x)
-        #self.screen.blit(scaled_image, (-self.camera_x*self.scroll_scale+(600-temp) , -self.camera_y))
-        # Get the center of the window
-        #window_center = self.screen.get_rect().center
-        # Scale the image by the difference
-        #scaled_image = pygame.transform.scale(self.background_image, (int(self.background_image.get_width() - difference[0]), int(self.background_image.get_height() - difference[1])))
-        
-         # Blit the scaled image to the screen
-        #self.screen.blit(scaled_image, (0, 0))
-        # Calculate the new center of the screen considering the camera position
-        # Calculate the new center of the screen considering the camera position
-        # Calculate the new center of the screen considering the camera position
-        #screen_center = (self.WIDTH // 2, self.HEIGHT // 2)
-        #camera_center = (self.camera_x + self.WIDTH // 2, self.camera_y + self.HEIGHT // 2)
+    # Set the sidebar status        
+        if screen.sidebar_status == "open":
+            screen.open_sidebar(display=self.screen,
+                                xpos=self.camera_x,
+                                ypos=self.camera_y,
+                                bg=self.mod_background_image)
+        elif screen.sidebar_status == "closed":
+            screen.close_sidebar(display=self.screen,
+                                 xpos=self.camera_x,
+                                 ypos=self.camera_y,
+                                 bg=self.mod_background_image)
 
-        # Calculate the difference between these two centers
-        #difference = (camera_center[0] - screen_center[0], camera_center[1] - screen_center[1])
-
-        # Scale the image based on the zoom/scroll level
-        #scaled_image = pygame.transform.scale(self.background_image, (int(self.background_rect.width * self.scroll_scale), int(self.background_rect.height * self.scroll_scale)))
-
-        # Calculate the position to blit the scaled image, ensuring it is centered on the screen
-        #blit_position = (screen_center[0] - scaled_image.get_width() // 2 + difference[0], screen_center[1] - scaled_image.get_height() // 2 + difference[1])
-
-        # Adjust the blit position based on the camera position
-        #blit_position = (blit_position[0] - self.camera_x, blit_position[1] - self.camera_y)
-
-        # Blit the scaled image to the screen at the adjusted position
-        #self.screen.blit(scaled_image, blit_position)
-        
-        #screen_center = (self.WIDTH // 2, self.HEIGHT // 2)
-
-        # Calculate the scaled size of the background image.
-        #scaled_width = int(self.scroll_scale * self.background_image.get_width())
-        #scaled_height = int(self.scroll_scale * self.background_image.get_height())
-
-        # Create a new surface for the scaled background image.
-        #scaled_background_image = pygame.Surface((scaled_width, scaled_height))
-
-        # Scale the background image onto the new surface.
-        #pygame.transform.scale(self.background_image, scaled_background_image.get_size(), scaled_background_image)
-
-        # Calculate the offset of the scaled background image from the center of the screen.
-        #offset_x = (scaled_width - self.WIDTH) // 2 - self.camera_x
-        #offset_y = (scaled_height - self.HEIGHT) // 2 - self.camera_y
-
-        # Blit the scaled background image onto the screen, offset by the calculated amount.
-        #screen.blit(scaled_background_image, (screen_center[0] - offset_x, screen_center[1] - offset_y))
-        
     def main(self):
         # Initialize Pygame
         pygame.init()
         while self.running:
+            self.draw()
             self.handle_events()
             self.update()
-            self.draw()
             # Update the display
             pygame.display.flip()
 
             # Cap the frame rate
             self.clock.tick(self.FPS)
+
         pygame.quit()
-        sys.exit()
-   
-# Needs to be remade right now is bad   
-class MenuBox():
-    def __init__(self, x_cord, y_cord, height, width, font, screen):
-        self.x = x_cord
-        self.y = y_cord
-        self.h = height
-        self.w = width
-        self.font = font
-        self.screen = screen
-        
-    def show_menu(self, mouse_x, mouse_y, spawn_pos_x, spawn_pos_y):
-        if (mouse_x >= self.x and mouse_x <= self.x + self.w) and (mouse_y >= self.y and mouse_y <= self.y + self.h):
-            print(f"X Pos: {mouse_x}, Y: POS: {mouse_y}")
-            pygame.draw.rect(self.screen, BLACK, (self.x-spawn_pos_x, self.y-spawn_pos_y, self.h, self.w))
-            pygame.draw.rect(screen, WHITE, (self.x+5-spawn_pos_x, self.y+5-spawn_pos_y, self.h-10, self.w-10))
-            item1_text = self.font.render("Menu Item 1", True, BLACK)
-            item2_text = self.font.render("Menu Item 2", True, BLACK)
-            self.screen.blit(item1_text, (self.x-spawn_pos_x + 10, self.y-spawn_pos_y + 10))
-            self.screen.blit(item2_text, (self.x-spawn_pos_x + 10, self.y-spawn_pos_y + 60))
+        quit()
 
 if __name__ == "__main__":
-    print(random_monster())
+    #print(random_monster())
     # Width, Height, Frame rate, Camera Speed
-    game = DndMainGame(400, 400, 60, 5) 
+    game = DndMainGame(width, height-60, 60, 5) 
     game.main()
+
+
