@@ -60,6 +60,28 @@ class screen():
         screen.button_rect = pygame.Rect(w-20,(h/2)-50,20,100)
         pygame.draw.rect(display, colour.bg1, screen.button_rect)
         display.blit(font.default.render('<', True, colour.white), (w-15, (h/2)-12))
+        
+    def detect_collision(click_position):
+        if (screen.button_rect.collidepoint(click_position)):
+            print("button click")
+            if screen.sidebar_status == "open":
+                screen.sidebar_status = "closed"
+            elif screen.sidebar_status == "closed":
+                screen.sidebar_status = "open"
+        elif (screen.sidebar_rect.collidepoint(click_position)):
+            print("sidebar click")
+            
+    def draw(d, x, y, m):
+        if screen.sidebar_status == "open":
+            screen.open_sidebar(display=d,
+                                xpos=x,
+                                ypos=y,
+                                bg=m)
+        elif screen.sidebar_status == "closed":
+            screen.close_sidebar(display=d,
+                                xpos=x,
+                                ypos=y,
+                                bg=m)
 
 ##main game (mainloop)
 class DndMainGame:
@@ -68,7 +90,7 @@ class DndMainGame:
     BLACK = (0,0,0)
     WHITE = (255,255,255)
 
-    background_image = pygame.image.load("Images/map.jpg")
+    background_image = pygame.image.load("map.jpg")
     background_rect = background_image.get_rect()
     
      # Initialize clock for controlling the frame rate
@@ -118,25 +140,9 @@ class DndMainGame:
         for event in pygame.event.get():
 
             ##detect left click (NEW)
-            if event.type == pygame.MOUSEBUTTONDOWN and \
-                event.button == 1 and \
-                screen.button_rect.collidepoint(event.pos):
-               
-                print("button click")
-                if screen.sidebar_status == "open":
-                    screen.sidebar_status = "closed"
-                elif screen.sidebar_status == "closed":
-                    screen.sidebar_status = "open"
-
-            elif event.type == pygame.MOUSEBUTTONDOWN and \
-               event.button == 1 and \
-               screen.sidebar_rect.collidepoint(event.pos):
-                
-                print("sidebar click")
-                    
-            ##detect mouse click on screen
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                print("screen click!", self.camera_x, self.camera_y, screen.zoom)
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                screen.detect_collision(event.pos)
+                print("Any click!", self.camera_x, self.camera_y, screen.zoom)
                     
             ##initialse X button
             if event.type == pygame.QUIT:
@@ -209,28 +215,11 @@ class DndMainGame:
         self.camera_x = max(0, min(self.camera_x, self.mod_background_rect.width - w))
         self.camera_y = max(0, min(self.camera_y, self.mod_background_rect.height - h))
        
-
-        
-
-        
-        # Calculate the new center of the screen considering the camera position
-        #screen_center = (self.WIDTH // 2, self.HEIGHT // 2)
-        #camera_center = (self.camera_x + self.WIDTH // 2, self.camera_y + self.HEIGHT // 2)
-
-        # Calculate the difference between these two centers
-        #difference = (camera_center[0] - screen_center[0], camera_center[1] - screen_center[1])
-
-        # Update the camera position to adjust for the scaling around the center
-        #self.camera_x -= difference[0] * (self.scroll_scale - 1)
-        #self.camera_y -= difference[1] * (self.scroll_scale - 1)
-
- 
-
     def draw(self):
 
-    # Clear the screen
+        # Clear the screen
         self.screen.fill(self.WHITE)
-    # Draw the background image at its position and at correct zoom
+        # Draw the background image at its position and at correct zoom
         w, h = pygame.display.get_surface().get_size()
  
         self.mod_background_image = self.background_image
@@ -241,18 +230,10 @@ class DndMainGame:
         
         ##suggestion about how to do the zoom more efficiently:
         ##https://stackoverflow.com/questions/62668614/zooming-in-and-out-with-pygame
-
-    # Set the sidebar status        
-        if screen.sidebar_status == "open":
-            screen.open_sidebar(display=self.screen,
-                                xpos=self.camera_x,
-                                ypos=self.camera_y,
-                                bg=self.mod_background_image)
-        elif screen.sidebar_status == "closed":
-            screen.close_sidebar(display=self.screen,
-                                 xpos=self.camera_x,
-                                 ypos=self.camera_y,
-                                 bg=self.mod_background_image)
+        
+        
+        # Set the sidebar status
+        screen.draw(self.screen, self.camera_x, self.camera_y, self.mod_background_image)
 
     def main(self):
         # Initialize Pygame
@@ -275,5 +256,3 @@ if __name__ == "__main__":
     # Width, Height, Frame rate, Camera Speed
     game = DndMainGame(width, height-60, 60, 5) 
     game.main()
-
-
